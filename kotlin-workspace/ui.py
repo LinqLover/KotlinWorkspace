@@ -121,9 +121,6 @@ class App:
         self.run_button = self._make_button(self.buttonbar, "Run script", 'icon_run.png', self.run_script)
         self.run_button.pack(side='left')
 
-        #self.batch_button = self._make_button(self.buttonbar, "Run script multiple times", 'icon_forward.png', self.run_batch)
-        #self.batch_button.pack(side='left')
-
         self.stop_button = self._make_button(self.buttonbar, "Stop script", 'icon_stop.png', self.stop_script)
         self.stop_button.pack(side='left')
 
@@ -137,13 +134,6 @@ class App:
         self.error_icon = self._make_icon(self.buttonbar, 'icon_error.png', "")
         self.error_icon.pack(side='right')
         ui_helpers.hide_widget(self.error_icon)
-
-        #self.progressbar = tk.ttk.Progressbar(self.buttonbar, orient='horizontal', mode='determinate', length=200)
-        #self.progressbar.pack(side='right')
-        #self.progressbar.pack_forget()
-        #
-        #self.eta_label = tk.Label(self.buttonbar, text="ETA: --:--")
-        #self.eta_label.pack(side='right')
 
         self.set_busy(False)
 
@@ -221,15 +211,7 @@ class App:
     def set_busy(self, busy):
         self.loading_icon.visible = busy
 
-        #if busy:
-        #    self.progressbar.start()
-        #    self.eta_label["text"] = "ETA: --:--"
-        #else:
-        #    self.progressbar.stop()
-        #    self.eta_label["text"] = "ETA: 00:00"
-
         self.run_button['state'] = 'disabled' if busy else 'normal'
-        #self.batch_button["state"] = "disabled" if busy else "normal"
         self.stop_button['state'] = 'normal' if busy else 'disabled'
 
     def run_script(self):
