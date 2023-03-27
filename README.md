@@ -9,8 +9,10 @@ Requirements:
 - [Python 3.9](https://www.python.org/downloads/)
 - [Pip](https://pip.pypa.io/en/stable/installing/)
 - Unix-like environment (tested on Ubuntu)
+- [Kotlin](https://kotlinlang.org/docs/command-line.html)
 
 ```
+apt-get install python-imaging-tk python3-pil python3-pil.imagetk
 pip install -r requirements.txt
 ```
 
@@ -19,7 +21,7 @@ pip install -r requirements.txt
 Navigate to the repository folder and run:
 
 ```
-python kotlin_workspace
+python kotlin-workspace
 ```
 
 ## Features
