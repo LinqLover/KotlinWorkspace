@@ -1,88 +1,24 @@
+import contextlib
 import tkinter as tk
 import tkinter.scrolledtext
 import tkinter.ttk
 import os
 import Pmw
-import psutil
 from queue import Queue
 import re
-import selectors
-import subprocess
-from threading import Thread
 
+import runners
 import ui_helpers
 
 
-KOTLINC = 'kotlinc'
 SCRIPT_BASENAME = 'script'
 SCRIPT_EXT = 'kts'
 SCRIPT_NAME = f'{SCRIPT_BASENAME}.{SCRIPT_EXT}'
-
-
-class ScriptRunner(Thread):
-    """
-    Runs a script in a separate thread and sends output to the output queue.
-
-    The output queue will receive tuples of the form (stream, chunk) like this:
-        ('stdout', 'Hello, world!')
-        ('stderr', 'Error: foo is not defined')
-        ('exit', 1)
-    """
-    def __init__(self, script, output_queue):
-        super().__init__()
-        self.script = script
-        self.output_queue = output_queue
-        self.process = None
-
-    def run(self):
-        with open(SCRIPT_NAME, "w") as f:
-            f.write(self.script)
-
-        exit_code = self._run_script()
-
-        try:
-            os.remove(SCRIPT_NAME)
-        except FileNotFoundError:
-            pass
-
-        self.output_queue.put(('exit', exit_code))
-
-    def _run_script(self):
-        try:
-            self.process = subprocess.Popen(
-                [KOTLINC, '-script', SCRIPT_NAME],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-        except FileNotFoundError:
-            self.output_queue.put(('stderr', f"{KOTLINC} not found. Please make sure it is in your PATH."))
-            return 127
-
-        with self.process:
-            selector = selectors.DefaultSelector()
-            selector.register(self.process.stdout, selectors.EVENT_READ)
-            selector.register(self.process.stderr, selectors.EVENT_READ)
-            exited = False
-            while not exited:
-                for key, val1 in selector.select(timeout=0):
-                    chunk = key.fileobj.read1().decode()
-                    if not chunk:
-                        exited = True
-                        break
-                    if key.fileobj is self.process.stdout:
-                        self.output_queue.put(('stdout', chunk))
-                    else:
-                        self.output_queue.put(('stderr', chunk))
-
-        return self.process.wait()
-
-    def stop(self):
-        # We need to kill the process and all its children because kotlinc
-        # spawns a java process but doesn't kill it when it receives SIGTERM autc.
-        parent = psutil.Process(self.process.pid)
-        for child in parent.children():
-            child.kill()
+"""
+If True, scripts will be run with a smaller delay, but this depends on an
+undocumented feature of the compiler. See HotScriptRunner for more details.
+"""
+USE_HOT_SCRIPT = True
 
 
 class App:
@@ -92,6 +28,9 @@ class App:
 
         self._init_ui()
         self.output_queue = Queue()
+        if USE_HOT_SCRIPT:
+            self.script_thread = runners.HotScriptRunner(SCRIPT_NAME, self.output_queue)
+            self.script_thread.start()
 
     name = "Kotlin Workspace"
     update_interval = 100  # ms
@@ -198,7 +137,7 @@ class App:
         try:
             self.root.mainloop()
         finally:
-            self.stop_script()
+            self.end_script()
 
     @property
     def busy(self):
@@ -225,8 +164,11 @@ class App:
             self.output_pane.delete('1.0', tk.END)
 
         # start script
-        self.script_thread = ScriptRunner(script, self.output_queue)
-        self.script_thread.start()
+        if USE_HOT_SCRIPT:
+            self.script_thread.write(script)
+        else:
+            self.script_thread = runners.ScriptRunner(SCRIPT_NAME, self.output_queue, script)
+            self.script_thread.start()
 
         # start output loop
         self.root.after(100, self.update_output)
@@ -236,6 +178,12 @@ class App:
             return
 
         self.script_thread.stop()
+
+    def end_script(self):
+        if USE_HOT_SCRIPT:
+            self.script_thread.end()
+        else:
+            self.stop_script()
 
     def update_output(self):
         while not self.output_queue.empty():
