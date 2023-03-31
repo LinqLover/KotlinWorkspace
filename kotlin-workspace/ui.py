@@ -1,7 +1,6 @@
 import contextlib
 import tkinter as tk
 import tkinter.scrolledtext
-import tkinter.ttk
 import os
 import Pmw
 from queue import Queue
@@ -218,8 +217,6 @@ class App:
 
                         row = int(match.group('row'))
                         col = int(match.group('col')) if match.group('col') else 0
-                        start = f'1.0 + {match.start()} chars'
-                        end = f'1.0 + {match.end()} chars'
                         self.output_pane.insert(
                             tk.END,
                             chunk[match.start():match.end()],
