@@ -172,26 +172,22 @@ class App:
         return label
 
     def _make_text_pane(self, parent, readonly=False, **kwargs):
-        text_pane = (tk.scrolledtext.ScrolledText if not readonly else ui_helpers.ReadOnlyText)(parent, **kwargs)
+        text_pane = tk.scrolledtext.ScrolledText(parent, **kwargs)
+        if readonly:
+            @contextlib.contextmanager
+            def _unlocked():
+                text_pane.configure(state='normal')
+                try:
+                    yield
+                finally:
+                    text_pane.configure(state='disabled')
+            text_pane.unlocked = _unlocked
+            text_pane.configure(state='disabled')
 
-        def _onKeyRelease(event):
-            # adapted from https://stackoverflow.com/a/47496024/13994294
-            ctrl = (event.state & 0x4) != 0
-
-            if ctrl and event.keycode == 88 and event.keysym.lower() != 'x':
-                event.widget.event_generate('<<Cut>>')
-            if ctrl and event.keycode == 86 and event.keysym.lower() != 'v':
-                event.widget.event_generate('<<Paste>>')
-            if ctrl and event.keycode == 67 and event.keysym.lower() != 'c':
-                event.widget.event_generate('<<Copy>>')
-            if ctrl and event.keysym.lower() == 'a':
-                event.widget.tag_add(tk.SEL, '1.0', tk.END)
-                event.widget.mark_set(tk.INSERT, '1.0')
-                event.widget.see(tk.INSERT)
-            return 'break'
-
-        # provide basic copy/paste functionality
-        text_pane.bind("<KeyRelease>", _onKeyRelease)
+        # BUG: Copy only works once (likely by design of Tkinter)
+        text_pane.bind('<Control-c>', lambda e: text_pane.event_generate('<<Copy>>'))
+        text_pane.bind('<Control-v>', lambda e: text_pane.event_generate('<<Paste>>'))
+        text_pane.bind('<Control-x>', lambda e: text_pane.event_generate('<<Cut>>'))
 
         return text_pane
 

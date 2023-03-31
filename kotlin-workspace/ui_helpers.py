@@ -1,7 +1,5 @@
-import contextlib
 import itertools
 from PIL import Image, ImageTk
-import tkinter.scrolledtext
 import tkinter as tk
 
 
@@ -115,36 +113,3 @@ class HyperlinkManager:
             if tag[:6] == "hyper-":
                 self.links[tag]()
                 return
-
-
-class ReadOnlyText(tkinter.scrolledtext.ScrolledText):
-    """
-    A text widget that can be set to read-only mode.
-    """
-    def __init__(self, master=None, **kwargs):
-        super().__init__(master, **kwargs)
-
-        # create proxy
-        self._orig = f'{self._w}_orig'
-        self.tk.call('rename', self._w, self._orig)
-        self.tk.createcommand(self._w, self._proxy)
-
-        self.read_only = kwargs.get('read_only', True)
-
-    def _proxy(self, *args):
-        largs = list(args)
-
-        if self.read_only:
-            if args[0] == 'insert':
-                return
-            elif args[0] == "delete":
-                return
-
-        result = self.tk.call((self._orig,) + tuple(largs))
-        return result
-
-    @contextlib.contextmanager
-    def unlocked(self):
-        self.read_only = False
-        yield
-        self.read_only = True
